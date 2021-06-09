@@ -1,7 +1,6 @@
-.navbar {
-    color: white;
-    background-color: #A92323;
-    margin: 0;
-    padding: 0;
-    font-size: 24pt;
+#trashVideo {
+    color: darkgrey;
+}
+#trashVideo:hover {
+    color: crimson;
 }
