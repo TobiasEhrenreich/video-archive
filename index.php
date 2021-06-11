@@ -1,3 +1,116 @@
+<?php
+// Function definitions
+function connectDatabase() {
+    $connection = new mysqli("localhost", "root", "", "video_archive_db");
+
+    if ($connection->connect_error) {
+        die("Error: ".$connection->connect_error);
+    }
+    return $connection;
+}
+
+function showData($connection, $res){
+
+    echo "<table class='table table-hover'>
+                    <thead>
+                        <tr>
+                          <th scope='col'>primary key</th>
+                          <th scope='col'>unique id</th>
+                          <th scope='col'>title</th>
+                          <th scope='col'>description</th>
+                          <th scope='col'>datetime</th>
+                          <th scope='col'>download</th>
+                        </tr>
+                    </thead>
+                    <tbody>";
+
+
+    if ($res == true) {
+        if ($res->num_rows > 0) {
+            while ($i = $res->fetch_assoc()) {
+                echo "<tr>
+                                  <th scope='row'>" . $i["pk"] . "</th>
+                                  <td>" . $i["id"] . "</td>
+                                  <td><a target='blank' rel='noopener noreferrer' href='" . dirname($_SERVER['PHP_SELF']) . "/index.php/?id=" . $i["id"] . "' class='link-primary'>" . $i["title"] . "</a></td>
+                                  <td>" . $i["description"] . "</td>
+                                  <td>" . $i["datetime"] . "</td>
+                                  <td><a target='blank' rel='noopener noreferrer' href='" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . ".mp4' class='link-primary' download='" . $i["title"] . ".mp4'><i class='fa fa-download'></a></td>
+                              </tr>";
+            }
+        }
+    } else {
+        echo "Error: " . $connection->error;
+    }
+    echo "</tbody>
+                  </table>";
+
+}
+
+function searchData($connection) {
+    $search = $_GET["search"];
+    $sql = "SELECT * FROM videos where LOWER(title) like LOWER('%" . $search . "%') or LOWER(description) like LOWER('%" . $search . "%');";
+    $res = $connection->query($sql);
+
+    if ($res == true) {
+        if ($res->num_rows > 0) {
+
+            echo "<div class=\"card text-center\">
+                        <div class=\"card-body\">
+                        <h5 class=\"card-title\">Search results</h5>
+                        <p class=\"card-text\">This are all found videos that contain the search term \"" . $search . "\".</p>";
+            showData($connection, $res);
+            echo "</div>
+                    </div>";
+        } else {
+            echo "<div class=\"card text-center\">
+                        <div class=\"card-body\">
+                        <h5 class=\"card-title\">Search results</h5>
+                        <p class=\"card-text\">No videos found for the search term \"" . $search . "\".</p>";
+            echo "</div";
+        }
+    } else {
+        echo "Error: " . $connection->error;
+    }
+}
+
+function showVideo($connection, $id) {
+    $sql = "SELECT * FROM videos where id='".$id."';";
+    $res = $connection->query($sql);
+
+    if ($res == true) {
+        if ($res->num_rows > 0) {
+            echo "<div class='row'>";
+            $i = $res->fetch_assoc();
+            echo "<div class='col'>";
+            echo "<div class='card h-100'>";
+            echo "";
+            echo "<video src=\"" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . ".mp4\" controls autoplay loop muted></video>";
+            echo "<div class='card-body''>";
+            echo "<h5 class='card-title'>" . $i["title"] ;
+            echo " <a target='blank' rel='noopener noreferrer' href='" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . ".mp4' class='link-primary' download='" . $i["title"] . ".mp4'><i class='fa fa-download'></i></a>". "</h5>";
+            echo "<p class='card-text'>" . $i["description"] . "</p>";
+            echo "</div>";
+            echo "<div class='card-footer'>";
+            echo "<small class='text-muted'>Uploaded on " . $i["datetime"] . "</small>";
+            echo "</div>";
+            echo "</div>";
+
+            echo "</div";
+        } else {
+            echo "<div class=\"card text-center\">
+                        <div class=\"card-body\">
+                        <h5 class=\"card-title\">Search results</h5>
+                        <p class=\"card-text\">No video has the id \"" . $id . "\".</p>";
+            echo "</div";
+        }
+    } else {
+        echo "Error: " . $connection->error;
+    }
+}
+
+$connection = connectDatabase();
+?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -59,8 +172,8 @@
                     </div>
                     <div class="mb-3">
                         <label class="form-label" for="link">Video file</label>
-                        <input type="file" class="form-control" id="link" name="link" accept="video/mp4, video/flv" placeholder="File" aria-describedby="linkHelp" required>
-                        <div id="linkHelp" class="form-text">Select a mp4 or flv file.</div>
+                        <input type="file" class="form-control" id="link" name="link" accept="video/mp4" placeholder="File" aria-describedby="linkHelp" required>
+                        <div id="linkHelp" class="form-text">Select a mp4 file.</div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
@@ -75,90 +188,15 @@
 <div class="p-5">
 
 <?php
-$search = null;
-$servername = "localhost";
-$user = "root";
-$pw = "";
-$db = "sensitivedaten";
 
-$con = new mysqli($servername, $user, $pw, $db);
 
-if ($con->connect_error) {
-    die("Ein Verbindungsfehler ist aufgetreten. ".$con->connect_error);
-}
+
 
 if ($_SERVER["REQUEST_METHOD"] == "GET") {
     if (isset($_GET["search"])) {
-        $search = $_GET["search"];
-        $sql = "SELECT * FROM videos where LOWER(title) like LOWER('%" . $search . "%') or LOWER(description) like LOWER('%" . $search . "%');";
-        $res = $con->query($sql);
-
-        if ($res == true) {
-            if ($res->num_rows > 0) {
-                echo "<div class=\"card text-center\">
-                        <div class=\"card-body\">
-                        <h5 class=\"card-title\">Search results</h5>
-                        <p class=\"card-text\">This are all found videos that contain the search term \"" . $search . "\".</p>";
-                echo "<div class='row row-cols-1 row-cols-md-3 g-4'>";
-                while ($i = $res->fetch_assoc()) {
-                    echo "<div class='col'>";
-                    echo "<div class='card h-100'>";
-                    echo "";
-                    echo "<video src=\"" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . "." . $i["type"] . "\" controls autoplay loop muted></video>";
-                    echo "<div class='card-body''>";
-                    echo "<a href='".dirname($_SERVER['PHP_SELF'])."/index.php/?id=".$i["id"]."' class='link-primary'><h5 class='card-title'>".$i["title"]."</h5></a>";
-                    echo "<p class='card-text'>" . $i["description"] . "</p>";
-                    echo "</div>";
-                    echo "<div class='card-footer'>";
-                    echo "<small class='text-muted'>Uploaded on " . $i["datetime"] . "</small>";
-                    echo "</div>";
-                    echo "</div>";
-                    echo "</div>";
-                }
-                echo "</div";
-                echo "</div";
-            } else {
-                echo "<div class=\"card text-center\">
-                        <div class=\"card-body\">
-                        <h5 class=\"card-title\">Search results</h5>
-                        <p class=\"card-text\">No videos found for the search term \"" . $search . "\".</p>";
-                echo "</div";
-            }
-        } else {
-            echo "Du bist ein Lappen. " . $con->error;
-        }
+        searchData($connection);
     } else if (isset($_GET["id"])) {
-        $sql = "SELECT * FROM videos where id='".$_GET["id"]."';";
-        $res = $con->query($sql);
-
-        if ($res == true) {
-            if ($res->num_rows > 0) {
-                echo "<div class='row'>";
-                while ($i = $res->fetch_assoc()) {
-                    echo "<div class='col'>";
-                    echo "<div class='card h-100'>";
-                    echo "";
-                    echo "<video src=\"" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . "." . $i["type"] . "\" controls autoplay loop muted></video>";
-                    echo "<div class='card-body''>";
-                    echo "<h5 class='card-title'>" . $i["title"] . "</h5>";
-                    echo "<p class='card-text'>" . $i["description"] . "</p>";
-                    echo "</div>";
-                    echo "<div class='card-footer'>";
-                    echo "<small class='text-muted'>Uploaded on " . $i["datetime"] . "</small>";
-                    echo "</div>";
-                    echo "</div>";
-                }
-                echo "</div";
-            } else {
-                echo "<div class=\"card text-center\">
-                        <div class=\"card-body\">
-                        <h5 class=\"card-title\">Search results</h5>
-                        <p class=\"card-text\">No videos found for the search term \"" . $search . "\".</p>";
-                echo "</div";
-            }
-        } else {
-            echo "Du bist ein Lappen. " . $con->error;
-        }
+        showVideo($connection, $_GET["id"]);
     }
 }
 
@@ -171,20 +209,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         $type = strtolower(pathinfo($_FILES["link"]["name"], PATHINFO_EXTENSION));
 
-//    $sql = "INSERT INTO videos (uid, title, description, link, datetime) VALUES (6, ".$title."', '".$description."', '".$link."', NOW())";
-        $sql = "INSERT INTO videos (id, title, description, type, datetime) VALUES (UUID(), \"" . $title . "\", \"" . $description . "\", \"" . $type . "\", NOW())";
-        $res = $con->query($sql);
+        $sql = "INSERT INTO videos (id, title, description, datetime) VALUES (UUID(), \"" . $title . "\", \"" . $description . "\", NOW())";
+        $res = $connection->query($sql);
 
         if ($res === true) {
-            $sql = "SELECT id FROM videos WHERE pk=" . $con->insert_id;
-            $res = $con->query($sql);
+            $sql = "SELECT id FROM videos WHERE pk=" . $connection->insert_id;
+            $res = $connection->query($sql);
 
             if ($res->num_rows == 1) {
                 while ($i = $res->fetch_assoc()) {
                     $link = $i["id"];
                 }
             } else {
-                echo "Du bist ein Lappen.2 " . $con->error;
+                echo "Error: " . $connection->error;
             }
 
             $target_dir = "uploads/";
@@ -193,32 +230,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $imageFileType = strtolower(pathinfo($target_file, PATHINFO_EXTENSION));
             $target_file = $target_dir . basename($link . "." . $imageFileType);
 
-            // Check if image file is a actual image or fake image
-//        if(isset($_POST["submit"])) {
-//            $check = getimagesize($_FILES["link"]["tmp_name"]);
-//            if($check !== false) {
-//                echo "File is an image - " . $check["mime"] . ".";
-//                $uploadOk = 1;
-//            } else {
-//                echo "File is not an image.";
-//                $uploadOk = 0;
-//            }
-//        }
-
-            // Check if file already exists
-            if (file_exists($target_file)) {
-                echo "Sorry, file already exists.";
-                $uploadOk = 0;
-            }
-
-            // Check file size
-//            if ($_FILES["link"]["size"] > 10000000) {
-//                echo "Sorry, your file is too large.";
-//                $uploadOk = 0;
-//            }
             // Allow certain file formats
-            if ($imageFileType != "mp4" && $imageFileType != "flv") {
-                echo "Sorry, only MP4 and FLV files are allowed.";
+            if ($imageFileType != "mp4") {
+                echo "Sorry, only MP4 files are allowed.";
                 $uploadOk = 0;
             }
 
@@ -234,71 +248,86 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 }
             }
         } else {
-            echo "Du bist ein Lappen. " . $con->error;
+            echo "Error: " . $connection->error;
         }
 }
 
 ?>
-<br>
-<br>
 
+<?php
+if (!isset($_GET["search"]) AND !isset($_GET["id"])) {
+    $sql = "SELECT * FROM videos";
+    $res = $connection->query($sql);
+
+    echo "<div class=\"card text-center\">
+                <div class=\"card-body\">
+                    <h5 class=\"card-title\">All videos</h5>
+                    <p class=\"card-text\">This are all uploaded videos on the platform. Please click on the corresponding title to proceed.</p>";
+    showData($connection, $res);
+    echo "</div>
+       </div>";
+}
+?>
+
+
+</div>
 
 
     <?php
-    if (!isset($_GET["search"]) AND !isset($_GET["id"])) {
-        echo "<div class=\"card text-center\">
-                <div class=\"card-body\">
-                    <h5 class=\"card-title\">All videos</h5>
-                    <p class=\"card-text\">This are all uploaded videos on the platform.</p>";
+//    if (!isset($_GET["search"]) AND !isset($_GET["id"])) {
+//        echo "<div class=\"card text-center\">
+//                <div class=\"card-body\">
+//                    <h5 class=\"card-title\">All videos</h5>
+//                    <p class=\"card-text\">This are all uploaded videos on the platform.</p>";
+//
+//                    echo "<div class='row row-cols-1 row-cols-md-3 g-4'>";
+//
+//                    $sql = "SELECT * FROM videos";
+//                    $res = $con->query($sql);
+//
+//                    if ($res == true) {
+//                        if ($res->num_rows > 0) {
+//                            while ($i = $res->fetch_assoc()) {
+//                                echo "<div class='col'>";
+//                                    echo "<div class='card h-100'>";
+//                                        echo "";
+//                                        echo "<video src='" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . ".mp4' controls autoplay loop muted></video>";
+//                                        echo "<div class='card-body''>";
+//                                            echo "<form action=".$_SERVER["PHP_SELF"]." method='delete' enctype='multipart/form-data'>";
+//                                                echo "<grid>";
+//                                                    echo "<div class='justify-content-center row'>";
+//                                                        echo "<div class='col col-sm-1'>";
+//                                                        echo "</div>";
+//                                                        echo "<div class='col col-sm-10'>";
+//                                                            echo "<a target='blank' rel='noopener noreferrer' href='".dirname($_SERVER['PHP_SELF'])."/index.php/?id=".$i["id"]."' class='link-primary'><h5 class='card-title'>".$i["title"]."</h5></a>";
+//                                                        echo "</div>";
+//                                                        echo "<div class='col col-sm-1 justify-content-right'>";
+//                                                            echo "<button id='trashVideo' type='submit' style='border: none; background-color: transparent;'><i class='fa fa-trash'></i></button>";
+//                                                        echo "</div>";
+//                                                    echo "</div>";
+//                                                    echo "<div class='row'>";
+//                                                         echo "<p class='card-text'>".$i["description"]."</p>";
+//                                                    echo "</div>";
+//                                                echo "</grid>";
+//                                            echo "</form>";
+//
+//                                        echo "</div>";
+//                                        echo "<div class='card-footer'>";
+//                                            echo "<small class='text-muted'>Uploaded on ".$i["datetime"]."</small>";
+//                                        echo "</div>";
+//                                    echo "</div>";
+//                                echo "</div>";
+//
+//                            }
+//                        }
+//                    } else {
+//                        echo "Error: " . $con->error;
+//                    }
+//                    echo "</div>";
+//        echo "</div>";
+//    }
 
-                    echo "<div class='row row-cols-1 row-cols-md-3 g-4'>";
-
-                    $sql = "SELECT * FROM videos";
-                    $res = $con->query($sql);
-
-                    if ($res == true) {
-                        if ($res->num_rows > 0) {
-                            while ($i = $res->fetch_assoc()) {
-                                echo "<div class='col'>";
-                                    echo "<div class='card h-100'>";
-                                        echo "";
-                                        echo "<video src=\"" . dirname($_SERVER['PHP_SELF']) . "/uploads/" . $i["id"] . "." . $i["type"] . "\" controls autoplay loop muted></video>";
-                                        echo "<div class='card-body''>";
-                                            echo "<form action=".$_SERVER["PHP_SELF"]." method='delete' enctype='multipart/form-data'>";
-                                                echo "<grid>";
-                                                    echo "<div class='justify-content-center row'>";
-                                                        echo "<div class='col col-sm-1'>";
-                                                        echo "</div>";
-                                                        echo "<div class='col col-sm-10'>";
-                                                            echo "<a target='blank' rel='noopener noreferrer' href='".dirname($_SERVER['PHP_SELF'])."/index.php/?id=".$i["id"]."' class='link-primary'><h5 class='card-title'>".$i["title"]."</h5></a>";
-                                                        echo "</div>";
-                                                        echo "<div class='col col-sm-1 justify-content-right'>";
-                                                            echo "<button id='trashVideo' type='submit' style='border: none; background-color: transparent;' <i class='fa fa-trash'></i></button>";
-                                                        echo "</div>";
-                                                    echo "</div>";
-                                                    echo "<div class='row'>";
-                                                         echo "<p class='card-text'>".$i["description"]."</p>";
-                                                    echo "</div>";
-                                                echo "</grid>";
-                                            echo "</form>";
-
-                                        echo "</div>";
-                                        echo "<div class='card-footer'>";
-                                            echo "<small class='text-muted'>Uploaded on ".$i["datetime"]."</small>";
-                                        echo "</div>";
-                                    echo "</div>";
-                                echo "</div>";
-
-                            }
-                        }
-                    } else {
-                        echo "Du bist ein Lappen. " . $con->error;
-                    }
-                    echo "</div>";
-        echo "</div>";
-    }
-
-    $con->close();
+    $connection->close();
     ?>
 
 
